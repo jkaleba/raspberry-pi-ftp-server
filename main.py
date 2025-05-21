@@ -3,22 +3,20 @@ import time
 import machine
 import os
 import socket
+import sdcard
 
 # -------- KONFIGURACJA ---------
 SSID = "HUAWEI-D55F"
 PASSWORD = "87859537"
 FTP_PORT = 21
 
-MONITORED_FILES = ["document.txt"]  # Lista plików pod ochroną tamper
+MONITORED_FILES = ["/sd/document.txt"]
 
 # -------- TAMPER DETECTION ---------
-_file_hashes = {}  # {filename: hash_int}
+_file_hashes = {}
 
 
 def _compute_hash(filename):
-    """
-    Uproszczona suma bajtów pliku (zamiast SHA-256).
-    """
     h = 0
     try:
         with open(filename, "rb") as f:
@@ -49,16 +47,11 @@ def check_file_changed(filename):
 
 
 def log_alert(msg):
-    # Alert na UART/konsoli
     print("[ALERT]", msg)
-    # (możesz dodać: zapis do pliku lub inną akcję)
 
 
-# -------- LOGOWANIE ---------
 def log_event(msg):
-    # Zwykły log na UART/konsoli
     print("[LOG]", msg)
-    # (możesz dodać: zapis do pliku logów)
 
 
 # -------- SERWER FTP ---------
@@ -118,10 +111,10 @@ class FTPServer:
                 elif command.upper().startswith("NOOP"):
                     conn.send(b"200 OK\r\n")
                 elif command.upper().startswith("PWD"):
-                    conn.send(b'257 "/" is current directory.\r\n')
+                    conn.send(b'257 "/sd" is current directory.\r\n')
 
                 elif command.upper().startswith("LIST"):
-                    files = os.listdir()
+                    files = os.listdir("/sd")
                     listing = "\r\n".join(files) + "\r\n"
                     conn.send(b"150 Here comes the directory listing.\r\n")
                     conn.send(listing.encode())
@@ -130,9 +123,10 @@ class FTPServer:
 
                 elif command.upper().startswith("RETR"):
                     filename = command[5:].strip()
-                    if filename in os.listdir():
+                    filepath = "/sd/" + filename
+                    if filename in os.listdir("/sd"):
                         conn.send(b"150 Opening data connection.\r\n")
-                        with open(filename, "rb") as f:
+                        with open(filepath, "rb") as f:
                             while True:
                                 chunk = f.read(512)
                                 if not chunk:
@@ -146,8 +140,9 @@ class FTPServer:
 
                 elif command.upper().startswith("STOR"):
                     filename = command[5:].strip()
+                    filepath = "/sd/" + filename
                     conn.send(b"150 Ok to send data.\r\n")
-                    with open(filename, "wb") as f:
+                    with open(filepath, "wb") as f:
                         while True:
                             data = conn.recv(512)
                             if not data or data.endswith(b"\r\n226 Transfer complete.\r\n"):
@@ -157,9 +152,8 @@ class FTPServer:
                             f.write(data)
                     conn.send(b"226 Transfer complete.\r\n")
                     log_event(f"Plik zapisany: {filename}")
-                    # Po STOR zaktualizuj hash dla tego pliku (jeśli monitorowany)
-                    if filename in MONITORED_FILES:
-                        init_file_hash(filename)
+                    if filepath in MONITORED_FILES:
+                        init_file_hash(filepath)
 
                 else:
                     conn.send(b"502 Command not implemented.\r\n")
@@ -193,36 +187,53 @@ def connect_wifi(ssid, password, timeout_ms=15000):
     return wlan.ifconfig()[0]
 
 
+# -------- MONTAŻ SD ---------
+def mount_sdcard():
+    # Maker Pi Pico: SPI1, SCK=10, MOSI=11, MISO=12, CS=13
+    spi = machine.SPI(1,
+                      sck=machine.Pin(10),
+                      mosi=machine.Pin(11),
+                      miso=machine.Pin(12)
+                      )
+    cs = machine.Pin(13, machine.Pin.OUT)
+    try:
+        sd = sdcard.SDCard(spi, cs)
+        os.mount(sd, "/sd")
+        log_event("Karta SD zamontowana.")
+        return True
+    except Exception as e:
+        log_alert(f"Nie wykryto karty SD lub błąd montowania: {e}")
+        return False
+
+
 # -------- MAIN ---------
 def main():
-    # Połącz z Wi-Fi
     connect_wifi(SSID, PASSWORD)
 
-    # Utwórz domyślny plik, jeśli go nie ma
+    if not mount_sdcard():
+        return
+
     for filename in MONITORED_FILES:
-        if filename not in os.listdir():
+        if filename not in ["/sd/" + f for f in os.listdir("/sd")]:
             with open(filename, "w") as f:
                 f.write("Plik chroniony tamper detection!\n")
 
-    # Zapamiętaj hashe
     for filename in MONITORED_FILES:
         init_file_hash(filename)
         log_event(f"Zainicjowano hash dla pliku {filename}")
 
-    # Uruchom FTP
     ftp = FTPServer(port=FTP_PORT)
     ftp.start()
     log_event("Serwer FTP uruchomiony.")
 
-    # Pętla główna
     try:
         while True:
             ftp.poll()
-            # Sprawdź zmiany plików co 2 sekundy
             time.sleep(2)
             for filename in MONITORED_FILES:
                 check_file_changed(filename)
     except KeyboardInterrupt:
         log_event("Serwer zatrzymany.")
+
 
 main()
