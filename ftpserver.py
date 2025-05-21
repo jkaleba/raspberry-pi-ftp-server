@@ -22,6 +22,7 @@ class FTPServer:
         try:
             conn, addr = self.socket.accept()
             log_event(f"Nowe połączenie od {addr}")
+
             conn.send(b"220 MicroPython FTP Server\r\n")
             self.logged_in = False
 

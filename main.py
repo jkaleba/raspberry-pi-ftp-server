@@ -6,9 +6,9 @@ import os
 import sdcard
 
 from ftpserver import FTPServer
-from tamper import init_file_hash, check_file_changed
 from utils import log_event, log_alert, load_env
 from wifi import connect_wifi
+from tamper import FileTamper
 
 MONITORED_FILES = ["/sd/document.txt"]
 
@@ -45,8 +45,10 @@ def main():
                 f.write("Plik chroniony tamper detection!\n")
 
     for filename in MONITORED_FILES:
-        init_file_hash(filename)
-        log_event(f"Zainicjowano hash dla pliku {filename}")
+        if FileTamper.init_file_hash(filename):
+            log_event(f"Zainicjowano hash dla pliku {filename}")
+        else:
+            log_alert(f"Błąd inicjalizacji hash dla pliku {filename}")
 
     ftp = FTPServer(username=ftp_user, password=ftp_pass, port=ftp_port)
     ftp.start()
@@ -57,9 +59,13 @@ def main():
             ftp.poll()
             time.sleep(2)
             for filename in MONITORED_FILES:
-                check_file_changed(filename)
+                FileTamper.check_file_changed(filename)
     except KeyboardInterrupt:
         log_event("Serwer zatrzymany.")
 
-
-main()
+if __name__ == "__main__":
+    try:
+        main()
+    except Exception as e:
+        log_alert(f"Nieoczekiwany błąd: {e}")
+        machine.reset()
