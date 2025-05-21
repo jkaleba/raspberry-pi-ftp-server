@@ -1,7 +1,7 @@
 # wifi.py
 import network
 import time
-from utils import log_event
+from logger import Logger
 
 
 def connect_wifi(ssid, password, timeout_ms=15000):
@@ -11,6 +11,10 @@ def connect_wifi(ssid, password, timeout_ms=15000):
 
     log_event("Rozpoczynam łączenie z Wi-Fi...")
     wlan.connect(ssid, password)
+<<<<<<< Updated upstream
+=======
+    Logger.log_event("Łączenie z Wi-Fi…")
+>>>>>>> Stashed changes
 
     t0 = time.ticks_ms()
     while not wlan.isconnected():
@@ -27,5 +31,5 @@ def connect_wifi(ssid, password, timeout_ms=15000):
             raise RuntimeError("Timeout przy łączeniu z Wi-Fi")
         time.sleep(0.2)
 
-    log_event(f"Połączono: {wlan.ifconfig()}")
+    Logger.log_event(f"Połączono: {wlan.ifconfig()}")
     return wlan.ifconfig()[0]
