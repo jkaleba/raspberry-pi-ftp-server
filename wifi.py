@@ -1,31 +1,31 @@
 # wifi.py
 import network
 import time
-from utils import log_event
+from logger import Logger
 
 
 def connect_wifi(ssid, password, timeout_ms=15000):
-    log_event(f"Aktywuję interfejs Wi-Fi (SSID: {ssid})")
+    Logger.log_info(f"Aktywuję interfejs Wi-Fi (SSID: {ssid})")
     wlan = network.WLAN(network.STA_IF)
     wlan.active(True)
 
-    log_event("Rozpoczynam łączenie z Wi-Fi...")
+    Logger.log_info("Rozpoczynam łączenie z Wi-Fi...")
     wlan.connect(ssid, password)
 
     t0 = time.ticks_ms()
     while not wlan.isconnected():
         status = wlan.status()
-        log_event(f"Status Wi-Fi: {status}")
+        Logger.log_info(f"Status Wi-Fi: {status}")
         if status == network.STAT_WRONG_PASSWORD:
-            log_event("Błędne hasło Wi-Fi.")
+            Logger.log_info("Błędne hasło Wi-Fi.")
             raise RuntimeError("Błędne hasło Wi-Fi")
         if status == network.STAT_NO_AP_FOUND:
-            log_event("Nie znaleziono sieci Wi-Fi.")
+            Logger.log_info("Nie znaleziono sieci Wi-Fi.")
             raise RuntimeError("Nie znaleziono sieci Wi-Fi")
         if time.ticks_diff(time.ticks_ms(), t0) > timeout_ms:
-            log_event("Timeout przy łączeniu z Wi-Fi.")
+            Logger.log_info("Timeout przy łączeniu z Wi-Fi.")
             raise RuntimeError("Timeout przy łączeniu z Wi-Fi")
         time.sleep(0.2)
 
-    log_event(f"Połączono: {wlan.ifconfig()}")
+    Logger.log_info(f"Połączono: {wlan.ifconfig()}")
     return wlan.ifconfig()[0]

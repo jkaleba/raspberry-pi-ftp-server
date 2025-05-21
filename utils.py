@@ -1,12 +1,5 @@
 # utils.py
-
-def log_event(msg):
-    print("[LOG]", msg)
-
-
-def log_alert(msg):
-    print("[ALERT]", msg)
-
+from logger import Logger
 
 def load_env(filepath=".env"):
     env = {}
@@ -18,5 +11,5 @@ def load_env(filepath=".env"):
                     key, value = line.split("=", 1)
                     env[key.strip()] = value.strip()
     except OSError:
-        log_alert(".env file not found! Using default values.")
+        Logger.log_alert(".env file not found! Using default values.")
     return env

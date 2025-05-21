@@ -4,11 +4,12 @@ import time
 import machine
 import os
 import sdcard
+from logger import Logger
 
 from ftpserver import FTPServer
-from utils import log_event, log_alert, load_env
 from wifi import connect_wifi
 from tamper import FileTamper
+from utils import load_env
 
 MONITORED_FILES = ["/sd/document.txt"]
 
@@ -19,10 +20,10 @@ def mount_sdcard():
     try:
         sd = sdcard.SDCard(spi, cs)
         os.mount(sd, "/sd")
-        log_event("Karta SD zamontowana.")
+        Logger.log_info("Karta SD zamontowana.")
         return True
     except Exception as e:
-        log_alert(f"Nie wykryto karty SD lub błąd montowania: {e}")
+        Logger.log_alert(f"Nie wykryto karty SD lub błąd montowania: {e}")
         return False
 
 
@@ -46,13 +47,13 @@ def main():
 
     for filename in MONITORED_FILES:
         if FileTamper.init_file_hash(filename):
-            log_event(f"Zainicjowano hash dla pliku {filename}")
+            Logger.log_info(f"Zainicjowano hash dla pliku {filename}")
         else:
-            log_alert(f"Błąd inicjalizacji hash dla pliku {filename}")
+            Logger.log_alert(f"Błąd inicjalizacji hash dla pliku {filename}")
 
     ftp = FTPServer(username=ftp_user, password=ftp_pass, port=ftp_port)
     ftp.start()
-    log_event("Serwer FTP uruchomiony.")
+    Logger.log_info("Serwer FTP uruchomiony.")
 
     try:
         while True:
@@ -61,11 +62,12 @@ def main():
             for filename in MONITORED_FILES:
                 FileTamper.check_file_changed(filename)
     except KeyboardInterrupt:
-        log_event("Serwer zatrzymany.")
+        Logger.log_info("Serwer zatrzymany.")
 
 if __name__ == "__main__":
+    Logger.init()
     try:
         main()
     except Exception as e:
-        log_alert(f"Nieoczekiwany błąd: {e}")
+        Logger.log_alert(f"Nieoczekiwany błąd: {e}")
         machine.reset()
