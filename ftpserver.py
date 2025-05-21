@@ -16,7 +16,7 @@ class FTPServer:
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket.bind(('0.0.0.0', self.port))
         self.socket.listen(1)
-        Logger.log_event(f"Serwer FTP nasłuchuje na porcie {self.port}")
+        Logger.log_info(f"Serwer FTP nasłuchuje na porcie {self.port}")
 
     def setup_pasv(self):
         # Otwórz socket na losowym porcie >1024
@@ -47,7 +47,7 @@ class FTPServer:
     def poll(self):
         try:
             conn, addr = self.socket.accept()
-            Logger.log_event(f"Nowe połączenie od {addr}")
+            Logger.log_info(f"Nowe połączenie od {addr}")
             conn.send(b"220 MicroPython FTP Server\r\n")
             self.logged_in = False
             user = None
@@ -58,7 +58,7 @@ class FTPServer:
                     if not data:
                         break
                     command = data.decode().strip()
-                    Logger.log_event(f"Odebrano komendę: {command}")
+                    Logger.log_info(f"Odebrano komendę: {command}")
 
                     if command.upper().startswith("USER"):
                         user = command[5:].strip()
@@ -69,14 +69,14 @@ class FTPServer:
                         if user == self.username and passwd == self.password:
                             self.logged_in = True
                             conn.send(b"230 User logged in, proceed.\r\n")
-                            Logger.log_event(f"Zalogowano użytkownika {user}")
+                            Logger.log_info(f"Zalogowano użytkownika {user}")
                         else:
                             conn.send(b"530 Login incorrect.\r\n")
-                            Logger.log_event(f"Nieudana próba logowania: {user}/{passwd}")
+                            Logger.log_info(f"Nieudana próba logowania: {user}/{passwd}")
 
                     elif command.upper().startswith("QUIT"):
                         conn.send(b"221 Bye!\r\n")
-                        Logger.log_event("Klient zakończył sesję.")
+                        Logger.log_info("Klient zakończył sesję.")
                         break
 
                     elif not self.logged_in:
@@ -88,7 +88,7 @@ class FTPServer:
                             self.pasv_socket = None
                         response = self.setup_pasv()
                         conn.send(response)
-                        Logger.log_event(f"Ustawiono PASV na {self.pasv_addr}")
+                        Logger.log_info(f"Ustawiono PASV na {self.pasv_addr}")
 
                     elif command.upper().startswith("LIST"):
                         if not self.pasv_socket:
@@ -101,7 +101,7 @@ class FTPServer:
                             listing = "\r\n".join(files) + "\r\n"
                             data_conn.sendall(listing.encode())
                             conn.send(b"226 Directory send OK.\r\n")
-                            Logger.log_event("Wysłano listę plików.")
+                            Logger.log_info("Wysłano listę plików.")
                         except Exception as e:
                             conn.send(b"451 Error reading directory.\r\n")
                             Logger.log_alert(f"Błąd podczas listowania: {e}")
@@ -127,7 +127,7 @@ class FTPServer:
                                             break
                                         data_conn.send(chunk)
                                 conn.send(b"226 Transfer complete.\r\n")
-                                Logger.log_event(f"Plik pobrany: {filename}")
+                                Logger.log_info(f"Plik pobrany: {filename}")
                             except Exception as e:
                                 conn.send(b"451 Error reading file.\r\n")
                                 Logger.log_alert(f"Błąd podczas pobierania pliku: {e}")
@@ -154,7 +154,7 @@ class FTPServer:
                                         break
                                     f.write(data)
                             conn.send(b"226 Transfer complete.\r\n")
-                            Logger.log_event(f"Plik zapisany: {filename}")
+                            Logger.log_info(f"Plik zapisany: {filename}")
                         except Exception as e:
                             conn.send(b"451 Error writing file.\r\n")
                             Logger.log_alert(f"Błąd podczas zapisu pliku: {e}")
@@ -165,7 +165,7 @@ class FTPServer:
 
                     else:
                         conn.send(b"502 Command not implemented.\r\n")
-                        Logger.log_event(f"Nieobsługiwana komenda: {command}")
+                        Logger.log_info(f"Nieobsługiwana komenda: {command}")
 
                 except Exception as e:
                     Logger.log_alert(f"Błąd podczas obsługi komendy: {e}")
@@ -173,7 +173,7 @@ class FTPServer:
                     # Nie przerywaj pętli – pozwól użytkownikowi próbować dalej
 
             conn.close()
-            Logger.log_event("Połączenie zamknięte.")
+            Logger.log_info("Połączenie zamknięte.")
 
         except Exception as e:
             Logger.log_alert(f"Socket error: {e}")

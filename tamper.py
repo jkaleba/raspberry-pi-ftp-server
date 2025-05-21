@@ -11,7 +11,7 @@ class FileTamper:
     def _ensure_hash_dir():
         if not os.path.exists(FileTamper.HASH_DIR):
             os.mkdir(FileTamper.HASH_DIR)
-            Logger.log_event(f"Utworzono katalog hashów: {FileTamper.HASH_DIR}")
+            Logger.log_info(f"Utworzono katalog hashów: {FileTamper.HASH_DIR}")
 
     @staticmethod
     def _get_hash_filename(original_filename):
@@ -41,7 +41,7 @@ class FileTamper:
         try:
             with open(hash_file, "w") as f:
                 f.write(current_hash)
-            Logger.log_event(f"Zapisano hash dla {filename} w {hash_file}")
+            Logger.log_info(f"Zapisano hash dla {filename} w {hash_file}")
             return True
         except OSError as e:
             Logger.log_alert(f"Błąd zapisu hash dla {filename}: {e}")
