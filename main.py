@@ -5,6 +5,7 @@ import machine
 import os
 import sdcard
 from logger import Logger
+import time
 
 from ftpserver import FTPServer
 from wifi import connect_wifi
@@ -12,7 +13,6 @@ from tamper import FileTamper
 from utils import load_env
 
 MONITORED_FILES = ["/sd/document.txt"]
-
 
 def mount_sdcard():
     spi = machine.SPI(1, sck=machine.Pin(10), mosi=machine.Pin(11), miso=machine.Pin(12))
@@ -37,8 +37,9 @@ def main():
     ftp_user = env["FTP_USER"]
     ftp_pass = env["FTP_PASS"]
     ftp_port = int(env["FTP_PORT"])
-
+    print(ssid, password, ftp_user, ftp_pass, ftp_port, sep='\n')
     connect_wifi(ssid, password)
+
 
     for filename in MONITORED_FILES:
         if filename not in ["/sd/" + f for f in os.listdir("/sd")]:
@@ -50,13 +51,13 @@ def main():
             Logger.log_info(f"Zainicjowano hash dla pliku {filename}")
         else:
             Logger.log_alert(f"Błąd inicjalizacji hash dla pliku {filename}")
-
+    
     ftp = FTPServer(username=ftp_user, password=ftp_pass, port=ftp_port)
     ftp.start()
     Logger.log_info("Serwer FTP uruchomiony.")
 
     try:
-        while True:
+        while True: 
             ftp.poll()
             time.sleep(2)
             for filename in MONITORED_FILES:
