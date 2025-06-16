@@ -65,7 +65,7 @@ def main():
     except KeyboardInterrupt:
         Logger.log_info("Serwer zatrzymany.")
 
-if __name__ == "_main_":
+if __name__ == "__main__":
     Logger.init()
     try:
         main()
